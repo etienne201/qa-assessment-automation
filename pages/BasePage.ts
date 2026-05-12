@@ -1,9 +1,6 @@
 import { Page, Locator, expect } from '@playwright/test';
 
-/**
- * BasePage — shared utilities inherited by all page objects.
- * Centralises navigation, waiting, and error-checking logic.
- */
+ 
 export class BasePage {
   readonly page: Page;
 
@@ -11,23 +8,23 @@ export class BasePage {
     this.page = page;
   }
 
-  /** Navigate to a relative path */
+  //Navigate to a relative path 
   async goto(path = '/'): Promise<void> {
     await this.page.goto(path);
     await this.page.waitForLoadState('domcontentloaded');
   }
 
-  /** Wait for network idle (useful before assertions) */
+  //  Wait for network idle (useful before assertions) 
   async waitForIdle(): Promise<void> {
     await this.page.waitForLoadState('networkidle');
   }
 
-  /** Assert that the page title contains a given string */
+  // Assert that the page title contains a given string
   async assertTitle(text: string): Promise<void> {
     await expect(this.page).toHaveTitle(new RegExp(text, 'i'));
   }
 
-  /** Assert that a success banner or confirmation element is visible */
+  // Assert that a success banner or confirmation element is visible
   async assertGlobalSuccess(timeout = 8_000): Promise<void> {
     const sel = [
       '[data-testid="success-message"]',
@@ -39,7 +36,7 @@ export class BasePage {
     await expect(this.page.locator(sel).first()).toBeVisible({ timeout });
   }
 
-  /** Assert that no French text appears in any visible error messages */
+  // Assert that no French text appears in any visible error messages
   async assertNoFrenchErrors(): Promise<void> {
     const frenchPhrases = [
       'Veuillez',
@@ -55,12 +52,12 @@ export class BasePage {
     }
   }
 
-  /** Capture a full-page screenshot with a descriptive name */
+  // Capture a full-page screenshot with a descriptive name 
   async screenshot(name: string): Promise<void> {
     await this.page.screenshot({ path: `test-results/screenshots/${name}.png`, fullPage: true });
   }
 
-  /** Scroll to a locator and ensure it is in view */
+  // Scroll to a locator and ensure it is in view
   async scrollTo(locator: Locator): Promise<void> {
     await locator.scrollIntoViewIfNeeded();
   }

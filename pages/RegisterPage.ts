@@ -18,8 +18,6 @@ export class RegisterPage {
         await this.page.goto('https://qa-assessment.pages.dev/', { waitUntil: 'networkidle' });
         await this.page.waitForSelector('#firstName');
         
-        // Senior Move: Prevent form submission from reloading the page during tests.
-        // This allows us to see the .success message which otherwise disappears instantly.
         await this.page.evaluate(() => {
             const form = document.forms.namedItem("profileForm");
             if (form) {
@@ -47,8 +45,7 @@ export class RegisterPage {
 
   async fillMandatoryFields(data: any): Promise<void> {
     await test.step('Fill Mandatory Fields with Defaults', async () => {
-        // Senior Pattern: Default to valid values if not provided to isolate the field being tested.
-        const firstName = data.firstName !== undefined ? data.firstName : 'John';
+         const firstName = data.firstName !== undefined ? data.firstName : 'John';
         const lastName = data.lastName !== undefined ? data.lastName : 'Smith';
         const email = data.email !== undefined ? data.email : 'john.doe@example.com';
         const password = data.password !== undefined ? data.password : 'Password123!';
@@ -93,8 +90,7 @@ export class RegisterPage {
     await test.step('Submit Form', async () => {
         this.lastDialogMessage = null;
         
-        // Pro/Senior Tip: Disable HTML5 native validation to ensure the application's 
-        // custom validation script (script.js) is the one triggering the alerts.
+         // custom validation script (script.js) is the one triggering the alerts.
         await this.page.evaluate(() => {
             const form = document.forms.namedItem("profileForm");
             if (form) form.setAttribute('novalidate', 'true');
@@ -125,7 +121,7 @@ export class RegisterPage {
             
             const keywords: Record<string, string[]> = {
                 firstName: ['first name'],
-                lastName: ['last name', 'first name'], // Account for app bug
+                lastName: ['last name', 'first name'],  
                 email: ['email'],
                 password: ['password'],
                 confirmPassword: ['confirm password', 'match'],

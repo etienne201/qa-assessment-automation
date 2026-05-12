@@ -2,11 +2,6 @@ import { test, expect } from '@playwright/test';
 import { RegisterPage }  from '../../pages/RegisterPage';
 import { VALID, INVALID, BOUNDARY } from '../../fixtures/testData';
 
-/**
- * Edge case & boundary suite — TC_005, TC_006, TC_012, TC_037, TC_043, TC_058, TC_059.
- * Tests limit values and spec-unclear behaviours that need documentation.
- */
-
 test.describe('Boundary & edge cases', () => {
   let reg: RegisterPage;
 
