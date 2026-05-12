@@ -1,0 +1,44 @@
+{
+  "name": "qa-assessment-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+ 
+  "scripts": {
+    "test": "playwright test",
+
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "test:mobile": "playwright test --project=mobile-chrome",
+    "test:happy": "playwright test tests/happy-path/",
+    "test:negative": "playwright test tests/negative/",
+    "test:edge": "playwright test tests/edge-cases/",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:ci": "playwright test --reporter=line,json,allure-playwright",
+    "report": "playwright show-report",
+    "allure:generate": "allure generate allure-results --clean -o allure-report",
+    "allure:open": "allure open allure-report",
+    "allure:serve": "allure serve allure-results",
+    "allure:clean": "rimraf allure-results allure-report",
+    "clean": "rimraf playwright-report test-results allure-results allure-report",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "qa": "npm run clean && npm run test && npm run allure:generate"
+  },
+ 
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.7.0",
+    "allure-commandline": "^2.40.0",
+    "allure-playwright": "^3.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
