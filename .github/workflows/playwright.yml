@@ -154,19 +154,19 @@ jobs:
           path: allure-report
           retention-days: 30
 
+      - name: Generate workflow summary
+        if: always()
+        run: |
+          echo "## Résultats Centraux" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Ressource | Lien |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Rapport Allure | [Voir le rapport détaillé (HTML)](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run Details | [Logs complets de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+
       - name: Deploy Allure report to GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
-
-      - name: Generate workflow summary
-        if: always()
-        run: |
-          echo "## Résultats Centraux" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "|  Ressource | Lien |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "|  Rapport Allure | [Voir le rapport détaillé (HTML)](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
-          echo "|  Run Details | [Logs complets de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
