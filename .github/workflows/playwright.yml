@@ -186,6 +186,7 @@ jobs:
   notify:
     name: Send QA Email Report
     runs-on: ubuntu-latest
+    environment: 1
     needs:
       - test
       - allure-report
