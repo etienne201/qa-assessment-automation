@@ -64,7 +64,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test --project=${{ matrix.project }}
+        run: npm run test:ci -- --project=${{ matrix.project }}
         env:
           BASE_URL: ${{ env.BASE_URL }}
           CI: true
