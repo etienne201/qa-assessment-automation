@@ -2,16 +2,18 @@ name: Playwright QA Tests + Allure Report
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
 
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
-  # 3 runs per day (scheduled regression)
   schedule:
-    - cron: '0 0 * * *'   # 00:00 UTC
-    - cron: '0 8 * * *'   # 08:00 UTC
-    - cron: '0 16 * * *'  # 16:00 UTC
+    - cron: '0 0 * * *'    # 00:00 UTC
+    - cron: '0 8 * * *'    # 08:00 UTC
+    - cron: '0 16 * * *'   # 16:00 UTC
 
   workflow_dispatch:
 
@@ -21,12 +23,13 @@ permissions:
   id-token: write
 
 env:
-  BASE_URL: ${{ vars.BASE_URL }}
+  BASE_URL: https://qa-assessment.pages.dev/
 
-# ──────────────────────────────────────────────
-# 1. TEST JOB
-# ──────────────────────────────────────────────
 jobs:
+
+# ─────────────────────────────
+# 1. TEST JOB
+# ─────────────────────────────
   test:
     name: ${{ matrix.project }} tests
     runs-on: ubuntu-latest
@@ -34,13 +37,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [chromium, firefox, webkit, mobile-chrome]
+        project:
+          - chromium
+          - firefox
+          - webkit
+          - mobile-chrome
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -52,46 +59,53 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Install Playwright browsers
+      - name: Install browsers
         run: npx playwright install --with-deps
 
       - name: Run tests
         run: npx playwright test --project=${{ matrix.project }}
         env:
-          BASE_URL: ${{ vars.BASE_URL }}
+          BASE_URL: ${{ env.BASE_URL }}
           CI: true
 
       - name: Upload Allure results
-        if: always()
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-results-${{ matrix.project }}
           path: allure-results
 
-      - name: Upload test results
-        if: always()
+      - name: Upload Playwright report
         uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: playwright-report
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: test-results-${{ matrix.project }}
           path: test-results
 
 
-# ──────────────────────────────────────────────
+# ─────────────────────────────
 # 2. ALLURE REPORT
-# ──────────────────────────────────────────────
+# ─────────────────────────────
   allure-report:
-    name: Generate & Publish Allure Report
+    name: Generate Allure Report
     runs-on: ubuntu-latest
     needs: test
     if: always()
 
     outputs:
-      report_url: ${{ steps.url.outputs.report }}
+      report_url: ${{ steps.report.outputs.url }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Allure results
+      - name: Download results
         uses: actions/download-artifact@v4
         with:
           pattern: allure-results-*
@@ -104,19 +118,19 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install Allure CLI
+      - name: Install Allure
         run: npm install -g allure-commandline
 
       - name: Generate report
-        run: allure generate allure-results --clean -o allure-report
+        run: allure generate allure-results -o allure-report --clean
 
-      - name: Upload report artifact
+      - name: Upload report
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -124,50 +138,50 @@ jobs:
           publish_dir: ./allure-report
 
       - name: Set report URL
-        id: url
-        run: echo "report=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
+        id: report
+        run: |
+          echo "url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
 
 
-# ──────────────────────
-# 3. EMAIL NOTIFICATION 
-# ──────────────────────
+# ─────────────────────────────
+# 3. EMAIL NOTIFICATION
+# ─────────────────────────────
   notify:
     name: Send Email Report
     runs-on: ubuntu-latest
-    needs: [test, allure-report]
-
+    needs: allure-report
     if: always() && (github.event_name == 'push' || github.event_name == 'schedule')
 
     steps:
-      - name: Send Email
+      - name: Send email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           secure: true
 
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
 
-          to: ${{ secrets.EMAIL_USERNAME }}
-          from: QA Automation Bot
+          from: QA Automation Bot <${{ secrets.MAIL_USERNAME }}>
+          to: ${{ secrets.MAIL_TO }}
 
-          subject: "Playwright QA Report - ${{ github.event_name }} - ${{ github.repository }}"
+          subject: "Playwright QA Report - ${{ github.event_name }}"
 
           body: |
-            Hello ${{ github.actor }},
+            Hello,
 
-            Test execution completed successfully.
+            Test execution completed.
 
-            Trigger type: ${{ github.event_name }}
+            Trigger: ${{ github.event_name }}
             Repository: ${{ github.repository }}
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
 
-            📊 Allure Report:
+            Allure Report:
             https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
 
-            🚀 Run:
+            Run:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             Regards,
