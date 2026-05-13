@@ -200,19 +200,19 @@ jobs:
           server_port: 465
           secure: true
 
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
 
           subject: Playwright QA Report - ${{ github.event_name }}
 
-          from: QA Automation Bot <${{ secrets.MAIL_USERNAME }}>
+          from: QA Automation Bot <${{ secrets.EMAIL_USERNAME }}>
 
           to: ${{ secrets.MAIL_TO }}
 
           html_body: |
             <div style="font-family: Arial, sans-serif; padding: 20px;">
 
-              <h2>🚀 Playwright QA Execution Report</h2>
+              <h2> Playwright QA Execution Report</h2>
 
               <p>
                 Your automated Playwright execution has completed.
@@ -247,7 +247,7 @@ jobs:
 
               <br>
 
-              <h3>📊 Reports</h3>
+              <h3> Reports</h3>
 
               <ul>
                 <li>
