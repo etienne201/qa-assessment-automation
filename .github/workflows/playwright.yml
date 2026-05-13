@@ -10,6 +10,7 @@ on:
     branches:
       - main
 
+  # 3 automatic executions per day
   schedule:
     - cron: '0 0 * * *'    # 00:00 UTC
     - cron: '0 8 * * *'    # 08:00 UTC
@@ -27,9 +28,9 @@ env:
 
 jobs:
 
-# ─────────────────────────────
-# 1. TEST JOB
-# ─────────────────────────────
+# ─────────────────────────────────────────────
+# 1. PLAYWRIGHT TESTS
+# ─────────────────────────────────────────────
   test:
     name: ${{ matrix.project }} tests
     runs-on: ubuntu-latest
@@ -44,10 +45,10 @@ jobs:
           - mobile-chrome
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -56,56 +57,80 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
+      - name: Run TypeScript typecheck
         run: npm run typecheck
 
-      - name: Install browsers
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run tests
-        run: npm test -- --project=${{ matrix.project }}
+      - name: Run Playwright tests
+        run: npx playwright test --project=${{ matrix.project }}
         env:
           BASE_URL: ${{ env.BASE_URL }}
           CI: true
 
       - name: Upload Allure results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: allure-results-${{ matrix.project }}
           path: allure-results
+          retention-days: 14
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.project }}
           path: playwright-report
+          retention-days: 14
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.project }}
           path: test-results
+          retention-days: 7
+
+      - name: Generate GitHub Summary
+        if: always()
+        run: |
+          echo "## Playwright Test Results - ${{ matrix.project }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "Tests passed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Browser | ${{ matrix.project }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repository | ${{ github.repository }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Actor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
 
 
-# ─────────────────────────────
-# 2. ALLURE REPORT
-# ─────────────────────────────
+# ─────────────────────────────────────────────
+# 2. GENERATE & DEPLOY ALLURE REPORT
+# ─────────────────────────────────────────────
   allure-report:
-    name: Generate Allure Report
+    name: Generate & Publish Allure Report
     runs-on: ubuntu-latest
     needs: test
     if: always()
 
     outputs:
-      report_url: ${{ steps.report.outputs.url }}
+      report_url: ${{ steps.report-url.outputs.url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Download results
+      - name: Download Allure results
         uses: actions/download-artifact@v4
         with:
           pattern: allure-results-*
@@ -118,56 +143,57 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install Allure
+      - name: Install Allure CLI
         run: npm install -g allure-commandline
 
-      - name: Generate report
-        run: allure generate allure-results -o allure-report --clean
+      - name: Generate Allure report
+        run: |
+          allure generate allure-results --clean -o allure-report
 
-      - name: Upload report
+      - name: Upload Allure report artifact
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
           path: allure-report
+          retention-days: 30
 
-      - name: Deploy GitHub Pages
+      - name: Deploy Allure report to GitHub Pages
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
 
-      - name: Set report URL
-        id: report
+      - name: Generate report URL
+        id: report-url
         run: |
           echo "url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
 
-      - name: Generate Summary
+      - name: Generate workflow summary
         if: always()
         run: |
-          echo "### Rapport de Test Playwright" >> $GITHUB_STEP_SUMMARY
+          echo "## Allure HTML Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Élément | Lien / Détails |" >> $GITHUB_STEP_SUMMARY
-          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Allure Report** | [Consulter le rapport HTML](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **GitHub Run** | [Voir les détails de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Branche** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Auteur** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Généré automatiquement par l'automatisation QA" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource | Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Allure Report | https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| GitHub Run | https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} |" >> $GITHUB_STEP_SUMMARY
 
 
-# ─────────────────────────────
+# ─────────────────────────────────────────────
 # 3. EMAIL NOTIFICATION
-# ─────────────────────────────
+# ─────────────────────────────────────────────
   notify:
-    name: Send Email Report
+    name: Send QA Email Report
     runs-on: ubuntu-latest
-    needs: allure-report
+    needs:
+      - test
+      - allure-report
+
     if: always() && (github.event_name == 'push' || github.event_name == 'schedule')
 
     steps:
-      - name: Send email
+      - name: Send HTML email report
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -177,26 +203,71 @@ jobs:
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
 
+          subject: Playwright QA Report - ${{ github.event_name }}
+
           from: QA Automation Bot <${{ secrets.MAIL_USERNAME }}>
+
           to: ${{ secrets.MAIL_TO }}
 
-          subject: "Playwright QA Report - ${{ github.event_name }}"
+          html_body: |
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
 
-          body: |
-            Hello,
+              <h2>🚀 Playwright QA Execution Report</h2>
 
-            Test execution completed.
+              <p>
+                Your automated Playwright execution has completed.
+              </p>
 
-            Trigger: ${{ github.event_name }}
-            Repository: ${{ github.repository }}
-            Branch: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
+              <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse;">
+                <tr>
+                  <td><strong>Repository</strong></td>
+                  <td>${{ github.repository }}</td>
+                </tr>
 
-            Allure Report:
-            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+                <tr>
+                  <td><strong>Branch</strong></td>
+                  <td>${{ github.ref_name }}</td>
+                </tr>
 
-            Run:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                <tr>
+                  <td><strong>Triggered By</strong></td>
+                  <td>${{ github.actor }}</td>
+                </tr>
 
-            Regards,
-            QA Automation Bot
+                <tr>
+                  <td><strong>Trigger Type</strong></td>
+                  <td>${{ github.event_name }}</td>
+                </tr>
+
+                <tr>
+                  <td><strong>Commit</strong></td>
+                  <td>${{ github.sha }}</td>
+                </tr>
+              </table>
+
+              <br>
+
+              <h3>📊 Reports</h3>
+
+              <ul>
+                <li>
+                  <a href="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/">
+                    View Allure HTML Report
+                  </a>
+                </li>
+
+                <li>
+                  <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">
+                    View GitHub Actions Run
+                  </a>
+                </li>
+              </ul>
+
+              <br>
+
+              <p>
+                Regards,<br>
+                QA Automation Bot
+              </p>
+
+            </div>
