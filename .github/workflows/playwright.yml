@@ -123,9 +123,6 @@ jobs:
     needs: test
     if: always()
 
-    outputs:
-      report_url: ${{ steps.report-url.outputs.url }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -164,111 +161,12 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
 
-      - name: Generate report URL
-        id: report-url
-        run: |
-          echo "url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
-
       - name: Generate workflow summary
         if: always()
         run: |
-          echo "## Allure HTML Report" >> $GITHUB_STEP_SUMMARY
+          echo "## Résultats Centraux" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Resource | Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|  Ressource | Lien |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Allure Report | https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| GitHub Run | https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} |" >> $GITHUB_STEP_SUMMARY
-
-
-# ─────────────────────────────────────────────
-# 3. EMAIL NOTIFICATION
-# ─────────────────────────────────────────────
-  notify:
-    name: Send QA Email Report
-    runs-on: ubuntu-latest
-    environment: 1
-    needs:
-      - test
-      - allure-report
-
-    if: always() && (github.event_name == 'push' || github.event_name == 'schedule')
-
-    steps:
-      - name: Send HTML email report
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-
-          subject: Playwright QA Report - ${{ github.event_name }}
-
-          from: QA Automation Bot <${{ secrets.EMAIL_USERNAME }}>
-
-          to: ${{ secrets.MAIL_TO }}
-
-          html_body: |
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-
-              <h2> Playwright QA Execution Report</h2>
-
-              <p>
-                Your automated Playwright execution has completed.
-              </p>
-
-              <table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse;">
-                <tr>
-                  <td><strong>Repository</strong></td>
-                  <td>${{ github.repository }}</td>
-                </tr>
-
-                <tr>
-                  <td><strong>Branch</strong></td>
-                  <td>${{ github.ref_name }}</td>
-                </tr>
-
-                <tr>
-                  <td><strong>Triggered By</strong></td>
-                  <td>${{ github.actor }}</td>
-                </tr>
-
-                <tr>
-                  <td><strong>Trigger Type</strong></td>
-                  <td>${{ github.event_name }}</td>
-                </tr>
-
-                <tr>
-                  <td><strong>Commit</strong></td>
-                  <td>${{ github.sha }}</td>
-                </tr>
-              </table>
-
-              <br>
-
-              <h3> Reports</h3>
-
-              <ul>
-                <li>
-                  <a href="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/">
-                    View Allure HTML Report
-                  </a>
-                </li>
-
-                <li>
-                  <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">
-                    View GitHub Actions Run
-                  </a>
-                </li>
-              </ul>
-
-              <br>
-
-              <p>
-                Regards,<br>
-                QA Automation Bot
-              </p>
-
-            </div>
+          echo "|  Rapport Allure | [Voir le rapport détaillé (HTML)](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
+          echo "|  Run Details | [Logs complets de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
