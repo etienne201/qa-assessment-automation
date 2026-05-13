@@ -142,6 +142,20 @@ jobs:
         run: |
           echo "url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
 
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "### Rapport de Test Playwright" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Élément | Lien / Détails |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Allure Report** | [Consulter le rapport HTML](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **GitHub Run** | [Voir les détails de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branche** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Auteur** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> Généré automatiquement par l'automatisation QA" >> $GITHUB_STEP_SUMMARY
+
 
 # ─────────────────────────────
 # 3. EMAIL NOTIFICATION
