@@ -1,1 +1,1 @@
-{"total":0,"items":[]}
+{"total":2,"items":[{"uid":"ed39c131db56604842b18253a0c76267","name":"firefox","statistic":{"failed":0,"broken":0,"skipped":0,"passed":18,"unknown":0,"total":18}},{"uid":"77e8e8d86348f0544cd7806ccca773cf","name":"mobile-chrome","statistic":{"failed":0,"broken":0,"skipped":0,"passed":18,"unknown":0,"total":18}}]}
