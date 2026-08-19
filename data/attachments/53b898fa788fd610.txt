@@ -1,1 +1,0 @@
-[DIALOG] First name must contain alphabetical characters only
