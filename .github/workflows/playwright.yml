@@ -54,7 +54,7 @@ jobs:
 # ─────────────────────────────────────────────
   test:
     name: Test - ${{ matrix.project }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -107,7 +107,18 @@ jobs:
 
       - name: Install system dependencies if cache hit
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps
+        run: |
+          case "${{ matrix.project }}" in
+            "firefox")
+              npx playwright install-deps firefox
+              ;;
+            "webkit")
+              npx playwright install-deps webkit
+              ;;
+            *)
+              npx playwright install-deps chromium
+              ;;
+          esac
 
       - name: Run Playwright tests
         id: run-tests
@@ -165,7 +176,7 @@ jobs:
 # ─────────────────────────────────────────────
   reporting-and-notification:
     name: Generate Reports (Allure + PDF) & Dispatch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: test
     if: always()
 
@@ -191,9 +202,22 @@ jobs:
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
+      # Cache des binaires Playwright Chromium pour le rendu du rapport exécutif PDF
+      - name: Cache Playwright Chromium for PDF
+        id: pdf-chromium-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+
       # Installer Chromium headless pour le rendu du rapport exécutif PDF
       - name: Install Playwright Chromium for PDF rendering
+        if: steps.pdf-chromium-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies if cache hit
+        if: steps.pdf-chromium-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       # Téléchargement et fusion de tous les résultats des 4 navigateurs
       - name: Download all Allure results
