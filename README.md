@@ -319,37 +319,50 @@ qa-assessment-automation/
 
 ---
 
-# CI/CD Pipeline
+# CI/CD Pipeline & Reporting Automatisé
 
-GitHub Actions automatically runs:
+GitHub Actions s'exécute automatiquement :
 
-- On push to `main`
-- On push to `develop`
-- On pull requests targeting `main`
-- 3 times per day using scheduled workflows
-
----
-
-# Pipeline Jobs
-
-| Job | Description |
-|------|-------------|
-| Chromium | Run tests on Chromium |
-| Firefox | Run tests on Firefox |
-| WebKit | Run tests on WebKit |
-| Allure Report | Merge and publish Allure report |
-| Performance | Collect traces and performance data |
-| Email Notification | Send report to pusher email |
+- **À chaque push** sur `main` et `develop`
+- **À chaque Pull Request** ciblant `main`
+- **Planification quotidienne automatique (Cron) : 3 fois par jour à 7h00, 9h00 et 13h00** (Heure CET / Paris)
+- **Déclenchement manuel (`workflow_dispatch`)** avec option d'envoi d'email et sélection de destinataire
 
 ---
 
-# Allure Report Deployment
+# Pipeline Jobs & Fonctionnalités
 
-Published automatically on GitHub Pages:
+| Job / Étape | Description |
+|-------------|-------------|
+| **Matrice de Tests (Chromium, Firefox, WebKit, Mobile)** | Exécution parallèle avec cache Playwright et installation ciblée par navigateur |
+| **Allure Report** | Consolidation des résultats et publication du rapport interactif sur GitHub Pages |
+| **Rapport Exécutif PDF** | Génération automatisée via Playwright d'un PDF A4 synthétique avec KPIs, graphiques et liste des anomalies |
+| **Notification & Envoi de Rapport** | Envoi automatique par email contenant le rapport exécutif en pièce jointe PDF et le lien vers le rapport HTML interactif |
+| **GitHub Step Summary** | Tableau de bord avec statut, métriques et liens directs vers les artefacts |
 
-```txt
-https://YOUR_USERNAME.github.io/qa-assessment-automation/
-```
+---
+
+# Déploiement & Consultation des Rapports
+
+Les rapports sont automatiquement publiés et accessibles en ligne :
+
+- **Rapport HTML Interactif Allure :** `https://etienne201.github.io/qa-assessment-automation/`
+- **Rapport Exécutif PDF direct :** `https://etienne201.github.io/qa-assessment-automation/qa-test-report.pdf`
+- **Résumé HTML direct :** `https://etienne201.github.io/qa-assessment-automation/executive-summary.html`
+
+---
+
+# Configuration des Secrets pour l'envoi d'Email
+
+Pour activer l'envoi automatique du rapport PDF et du lien HTML par email aux heures prévues (7h, 9h, 13h), configurez les secrets suivants dans votre dépôt GitHub (*Settings > Secrets and variables > Actions*) :
+
+| Secret | Description | Exemple |
+|---|---|---|
+| `SMTP_SERVER` | Hôte SMTP de votre fournisseur d'email | `smtp.gmail.com` ou `smtp.sendgrid.net` |
+| `SMTP_PORT` | Port SMTP (SSL: 465, TLS/STARTTLS: 587) | `465` ou `587` |
+| `SMTP_USERNAME` | Nom d'utilisateur ou adresse email expéditeur | `mon.adresse@gmail.com` |
+| `SMTP_PASSWORD` | Mot de passe applicatif SMTP | `abcd efgh ijkl mnop` |
+| `NOTIFICATION_EMAIL` | Adresse(s) email du/des destinataire(s) | `qa-team@entreprise.com` |
 
 ---
 

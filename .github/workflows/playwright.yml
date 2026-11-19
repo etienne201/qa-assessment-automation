@@ -1,4 +1,4 @@
-name: Playwright QA Tests + Allure Report
+name: Playwright QA Tests & Executive PDF/HTML Reporting
 
 on:
   push:
@@ -10,18 +10,39 @@ on:
     branches:
       - main
 
-  # 3 automatic executions per day
+  # Exécution automatique 3 fois par jour : 07h00, 09h00 et 13h00 (Heure CET / Paris UTC+1)
+  # Remarque : Les runners GitHub Actions sont en UTC. 
+  # Heure CET (UTC+1) :
+  # - 07h00 CET = 06:00 UTC
+  # - 09h00 CET = 08:00 UTC
+  # - 13h00 CET = 12:00 UTC
   schedule:
-    - cron: '0 0 * * *'    # 00:00 UTC
-    - cron: '0 8 * * *'    # 08:00 UTC
-    - cron: '0 16 * * *'   # 16:00 UTC
+    - cron: '0 6 * * *'    # 07:00 CET / Paris (06:00 UTC)
+    - cron: '0 8 * * *'    # 09:00 CET / Paris (08:00 UTC)
+    - cron: '0 12 * * *'   # 13:00 CET / Paris (12:00 UTC)
 
+  # Déclenchement manuel avec options
   workflow_dispatch:
+    inputs:
+      send_email:
+        description: 'Envoyer le rapport par email si SMTP configuré'
+        required: false
+        type: boolean
+        default: true
+      custom_recipient:
+        description: 'Destinataire email alternatif (laisser vide pour défaut)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
   pages: write
   id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   BASE_URL: https://qa-assessment.pages.dev/
@@ -29,10 +50,10 @@ env:
 jobs:
 
 # ─────────────────────────────────────────────
-# 1. PLAYWRIGHT TESTS
+# 1. PLAYWRIGHT TESTS (Matrice Cross-Browser)
 # ─────────────────────────────────────────────
   test:
-    name: ${{ matrix.project }} tests
+    name: Test - ${{ matrix.project }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -60,10 +81,36 @@ jobs:
       - name: Run TypeScript typecheck
         run: npm run typecheck
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      # Cache des binaires Playwright pour accélérer les runs CI
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}-${{ matrix.project }}
+
+      # Installation ciblée du navigateur requis par le job de la matrice
+      - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: |
+          case "${{ matrix.project }}" in
+            "firefox")
+              npx playwright install --with-deps firefox
+              ;;
+            "webkit")
+              npx playwright install --with-deps webkit
+              ;;
+            *)
+              npx playwright install --with-deps chromium
+              ;;
+          esac
+
+      - name: Install system dependencies if cache hit
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
 
       - name: Run Playwright tests
+        id: run-tests
         run: npm run test:ci -- --project=${{ matrix.project }}
         env:
           BASE_URL: ${{ env.BASE_URL }}
@@ -85,40 +132,39 @@ jobs:
           path: playwright-report
           retention-days: 14
 
-      - name: Upload test results
+      - name: Upload test results JSON & traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.project }}
           path: test-results
-          retention-days: 7
+          retention-days: 14
 
-      - name: Generate GitHub Summary
+      - name: Generate GitHub Step Summary
         if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.run-tests.outcome }}
         run: |
-          echo "## Playwright Test Results - ${{ matrix.project }}" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 Tests Playwright - Navigateur : \`${{ matrix.project }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "Tests passed successfully" >> $GITHUB_STEP_SUMMARY
+          if [ "$TEST_OUTCOME" = "success" ]; then
+            echo "✅ **Statut : Succès** - Tous les tests ont été validés avec succès sur ${{ matrix.project }}." >> $GITHUB_STEP_SUMMARY
           else
-            echo "Some tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Statut : Échec** - Des anomalies ont été détectées sur ${{ matrix.project }}." >> $GITHUB_STEP_SUMMARY
           fi
-
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| Paramètre | Valeur |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Browser | ${{ matrix.project }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Repository | ${{ github.repository }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Actor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Projet | \`${{ matrix.project }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Déclencheur | \`${{ github.event_name }}\` par \`${{ github.actor }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branche / Réf | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
 
 
 # ─────────────────────────────────────────────
-# 2. GENERATE & DEPLOY ALLURE REPORT
+# 2. RAPPORT CENTRALISÉ, EXÉCUTIF PDF & NOTIFICATION
 # ─────────────────────────────────────────────
-  allure-report:
-    name: Generate & Publish Allure Report
+  reporting-and-notification:
+    name: Generate Reports (Allure + PDF) & Dispatch
     runs-on: ubuntu-latest
     needs: test
     if: always()
@@ -127,14 +173,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Allure results
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          pattern: allure-results-*
-          path: allure-results
-          merge-multiple: true
+          node-version: 20
+          cache: npm
 
-      - name: Setup Java
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Java (requis pour Allure CLI)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -143,30 +191,133 @@ jobs:
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
-      - name: Generate Allure report
+      # Installer Chromium headless pour le rendu du rapport exécutif PDF
+      - name: Install Playwright Chromium for PDF rendering
+        run: npx playwright install --with-deps chromium
+
+      # Téléchargement et fusion de tous les résultats des 4 navigateurs
+      - name: Download all Allure results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: allure-results
+          merge-multiple: true
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: test-results
+          merge-multiple: true
+
+      # Génération du site interactif Allure Report
+      - name: Generate Allure Report
         run: |
           allure generate allure-results --clean -o allure-report
 
-      - name: Upload Allure report artifact
+      # Génération du rapport exécutif HTML et PDF via Playwright
+      - name: Generate Executive HTML & PDF Report
+        env:
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name || 'qa-assessment-automation' }}/
+        run: |
+          npm run report:pdf
+
+      # Intégrer les rapports PDF et HTML dans le dossier Allure pour accès direct par URL
+      - name: Bundle PDF and Executive Report into Allure Site
+        run: |
+          cp reports/qa-test-report.pdf allure-report/qa-test-report.pdf || true
+          cp reports/qa-executive-report.html allure-report/executive-summary.html || true
+
+      # Sauvegarde des rapports PDF/HTML en Artifacts GitHub
+      - name: Upload PDF & Executive Report Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
+          name: qa-executive-reports
+          path: reports/
+          retention-days: 30
+
+      - name: Upload Full Allure Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-site
           path: allure-report
           retention-days: 30
 
-      - name: Generate workflow summary
-        if: always()
-        run: |
-          echo "## Résultats Centraux" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Ressource | Lien |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Rapport Allure | [Voir le rapport détaillé (HTML)](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Run Details | [Logs complets de l'exécution](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Deploy Allure report to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
+      # Déploiement automatique sur GitHub Pages (branche main ou schedule)
+      - name: Deploy Reports to GitHub Pages
+        if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
+          keep_files: false
+
+      # Vérification de la configuration SMTP pour l'envoi d'emails
+      - name: Check SMTP Configuration
+        id: smtp-check
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          INPUT_SEND_EMAIL: ${{ github.event.inputs.send_email }}
+        run: |
+          if [ -n "$SMTP_SERVER" ] && [ -n "$SMTP_USERNAME" ] && [ -n "$SMTP_PASSWORD" ]; then
+            if [ "$INPUT_SEND_EMAIL" != "false" ]; then
+              echo "configured=true" >> $GITHUB_OUTPUT
+              echo "SMTP configuré avec succès. L'envoi par email sera déclenché."
+            else
+              echo "configured=false" >> $GITHUB_OUTPUT
+              echo "Envoi email désactivé manuellement via input."
+            fi
+          else
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "SMTP non configuré (secrets SMTP_SERVER, SMTP_USERNAME, SMTP_PASSWORD absents)."
+          fi
+
+      # Envoi automatique par Email avec PDF en pièce jointe et lien HTML
+      - name: Send Email Report (PDF Attached + HTML Link)
+        if: steps.smtp-check.outputs.configured == 'true'
+        uses: dawidd6/action-send-mail@v3
+        continue-on-error: true
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT || 465 }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "📊 [Rapport QA] Exécution #${{ github.run_number }} (${{ needs.test.result == 'success' && 'SUCCÈS' || 'ÉCHEC' }}) - ${{ github.ref_name }}"
+          to: ${{ github.event.inputs.custom_recipient || secrets.NOTIFICATION_EMAIL || 'qa-team@example.com' }}
+          from: "QA Automation Bot <${{ secrets.SMTP_USERNAME }}>"
+          html_body: file://reports/qa-executive-report.html
+          attachments: reports/qa-test-report.pdf
+
+      # Résumé GitHub enrichi avec liens cliquables et statut
+      - name: Publish Workflow Executive Summary
+        if: always()
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          SMTP_CONFIGURED: ${{ steps.smtp-check.outputs.configured }}
+          REPO_NAME: ${{ github.event.repository.name || 'qa-assessment-automation' }}
+        run: |
+          echo "## ⚡ Tableau de Bord Exécutif - QA Automation CI/CD" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$TEST_RESULT" = "success" ]; then
+            echo "### ✅ Statut Général : SUCCÈS" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Statut Général : ÉCHEC DÉTECTÉ DANS LA MATRICE" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Ressource | Lien d'accès | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 **Rapport Allure Interactif** | [Consulter le rapport HTML](https://${{ github.repository_owner }}.github.io/$REPO_NAME/) | Visualisation complète avec vidéos, traces et screenshots |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 **Rapport Exécutif PDF** | [Consulter / Télécharger le PDF](https://${{ github.repository_owner }}.github.io/$REPO_NAME/qa-test-report.pdf) | Document synthétique A4 pour le management et l'équipe |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📑 **Résumé HTML Exécutif** | [Voir le résumé HTML direct](https://${{ github.repository_owner }}.github.io/$REPO_NAME/executive-summary.html) | Vue condensée des KPIs et anomalies |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 **Exécution GitHub Actions** | [Voir Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) | Logs d'exécution et téléchargement des artifacts |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$SMTP_CONFIGURED" = "true" ]; then
+            echo "📧 **Notification Email :** Envoyée avec succès avec le fichier PDF en pièce jointe et le lien HTML." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "> 💡 **Note sur l'envoi d'Email :** Pour recevoir automatiquement le PDF par email à chaque exécution de 7h, 9h et 13h, configurez les secrets dans GitHub (*Settings > Secrets and variables > Actions*) : \`SMTP_SERVER\`, \`SMTP_PORT\`, \`SMTP_USERNAME\`, \`SMTP_PASSWORD\`, \`NOTIFICATION_EMAIL\`." >> $GITHUB_STEP_SUMMARY
+          fi
