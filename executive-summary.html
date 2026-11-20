@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport Exécutif de Tests QA - CI/CD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 24px;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    .header-container {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .header-left h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .status-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #ecfdf5;
+      color: #10b981;
+      border: 1px solid #10b98140;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .meta-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .meta-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .meta-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+      word-break: break-all;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .kpi-number {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .kpi-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .kpi-pass { color: #10b981; }
+    .kpi-fail { color: #ef4444; }
+    .kpi-skip { color: #f59e0b; }
+    .kpi-total { color: #3b82f6; }
+
+    .cta-banner {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cta-text {
+      color: #1e40af;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .cta-btn {
+      display: inline-block;
+      background: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .failure-title { color: #dc2626; }
+    .failure-card {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+      page-break-inside: avoid;
+    }
+    .failure-title-text {
+      font-weight: 700;
+      color: #991b1b;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .failure-pre {
+      background: #450a0a;
+      color: #fecaca;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .suite-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .suite-header {
+      background: #f1f5f9;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .suite-name {
+      font-weight: 700;
+      font-size: 13px;
+      color: #334155;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 4px;
+    }
+    .badge-passed { background: #dcfce7; color: #15803d; }
+    .badge-failed { background: #fee2e2; color: #b91c1c; }
+    .badge-skipped { background: #fef3c7; color: #b45309; }
+
+    .test-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .test-table th {
+      background: #f8fafc;
+      padding: 8px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .test-table td {
+      padding: 8px 16px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .status-passed { background: #dcfce7; color: #15803d; }
+    .status-failed { background: #fee2e2; color: #b91c1c; }
+    .status-skipped { background: #fef3c7; color: #b45309; }
+
+    .footer {
+      margin-top: 30px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+    .footer a { color: #64748b; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media print {
+      body { background: #ffffff; padding: 0; font-size: 11px; }
+      .header-container, .meta-card, .kpi-card, .suite-card { box-shadow: none !important; }
+      .cta-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header-container">
+    <div class="header-left">
+      <h1>⚡ Rapport Exécutif d'Automatisation QA</h1>
+      <div class="header-subtitle">Application cible : <strong>https://qa-assessment.pages.dev/</strong> | Projet : <strong>User Profile Form</strong></div>
+    </div>
+    <div class="status-banner">
+      <span>✅</span>
+      <span>SUCCÈS</span>
+    </div>
+  </div>
+
+  <!-- Meta Info -->
+  <div class="meta-grid">
+    <div class="meta-card">
+      <div class="meta-label">📅 Date & Heure</div>
+      <div class="meta-value">20/11/2026 15:44:19</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">🌿 Branche / Commit</div>
+      <div class="meta-value">main (b4ceb22)</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">⏱️ Durée Totale</div>
+      <div class="meta-value">47.7s</div>
+    </div>
+    <div class="meta-card">
+      <div class="meta-label">👤 Déclencheur CI</div>
+      <div class="meta-value">etienne201</div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-number kpi-total">72</div>
+      <div class="kpi-label">Tests Exécutés</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number kpi-pass">72</div>
+      <div class="kpi-label">Succès (100%)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number kpi-fail">0</div>
+      <div class="kpi-label">Échecs</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number kpi-skip">0</div>
+      <div class="kpi-label">Ignorés</div>
+    </div>
+  </div>
+
+  <!-- CTA Banner vers le rapport HTML interactif -->
+  <div class="cta-banner">
+    <div class="cta-text">
+      🌐 <strong>Rapport HTML Interactif Allure disponible en ligne :</strong> visualisez les vidéos, captures d'écran et traces réseau des tests.
+    </div>
+    <a href="https://etienne201.github.io/qa-assessment-automation/" class="cta-btn" target="_blank">Consulter le Rapport HTML &rarr;</a>
+  </div>
+
+  <!-- Failures Section (si échecs) -->
+  
+
+  <!-- Test Suites Details -->
+  <div class="section">
+    <h2 class="section-title">📋 Récapitulatif des Suites de Tests</h2>
+    
+    <div class="suite-card">
+      <div class="suite-header">
+        <span class="suite-name">webkit</span>
+        <div class="suite-badges">
+          <span class="badge badge-passed">0 réussi</span>
+          
+          <span class="badge badge-skipped">3 ignorés</span>
+        </div>
+      </div>
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width: 100px; text-align: center;">Statut</th>
+            <th style="width: 80px; text-align: right;">Durée</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>edge-cases/boundary.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>happy-path/registration.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>negative/validation.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  
+    <div class="suite-card">
+      <div class="suite-header">
+        <span class="suite-name">firefox</span>
+        <div class="suite-badges">
+          <span class="badge badge-passed">0 réussi</span>
+          
+          <span class="badge badge-skipped">3 ignorés</span>
+        </div>
+      </div>
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width: 100px; text-align: center;">Statut</th>
+            <th style="width: 80px; text-align: right;">Durée</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>edge-cases/boundary.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>happy-path/registration.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>negative/validation.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  
+    <div class="suite-card">
+      <div class="suite-header">
+        <span class="suite-name">mobile-chrome</span>
+        <div class="suite-badges">
+          <span class="badge badge-passed">0 réussi</span>
+          
+          <span class="badge badge-skipped">3 ignorés</span>
+        </div>
+      </div>
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width: 100px; text-align: center;">Statut</th>
+            <th style="width: 80px; text-align: right;">Durée</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>edge-cases/boundary.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>happy-path/registration.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>negative/validation.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  
+    <div class="suite-card">
+      <div class="suite-header">
+        <span class="suite-name">chromium</span>
+        <div class="suite-badges">
+          <span class="badge badge-passed">0 réussi</span>
+          
+          <span class="badge badge-skipped">3 ignorés</span>
+        </div>
+      </div>
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width: 100px; text-align: center;">Statut</th>
+            <th style="width: 80px; text-align: right;">Durée</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>edge-cases/boundary.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>happy-path/registration.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+            <tr>
+              <td>negative/validation.spec.ts</td>
+              <td style="text-align: center;">
+                <span class="status-pill status-skipped">SKIPPED</span>
+              </td>
+              <td style="text-align: right; color: #64748b;">0s</td>
+            </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>Généré automatiquement par le pipeline CI/CD GitHub Actions • Planification quotidienne (7h, 9h, 13h)</div>
+    <div>
+      <a href="https://etienne201.github.io/qa-assessment-automation/">Rapport HTML</a> • 
+      <a href="https://github.com/etienne201/qa-assessment-automation/actions/runs/44755952800">GitHub Actions Run #586</a>
+    </div>
+  </div>
+
+</body>
+</html>
